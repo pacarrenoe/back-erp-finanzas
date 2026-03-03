@@ -43,15 +43,10 @@ export async function getPeriodKpis(periodId: string) {
     SELECT
       $1::uuid as period_id,
 
-      COALESCE(SUM(CASE WHEN t.direction = 'IN'  AND c.kind = 'INCOME'  THEN t.amount END), 0) AS income_total,
-      COALESCE(SUM(CASE WHEN t.direction = 'OUT' AND c.kind = 'EXPENSE' THEN t.amount END), 0) AS expense_total,
+      COALESCE(SUM(CASE WHEN t.direction = 'IN'  AND c.kind = 'INCOME'  THEN t.amount END), 0)::int AS tx_income_total,
+      COALESCE(SUM(CASE WHEN t.direction = 'OUT' AND c.kind = 'EXPENSE' THEN t.amount END), 0)::int AS tx_expense_total
 
-      COALESCE(SUM(CASE WHEN t.direction = 'IN'  AND c.kind = 'INCOME'  THEN t.amount END), 0)
-      -
-      COALESCE(SUM(CASE WHEN t.direction = 'OUT' AND c.kind = 'EXPENSE' THEN t.amount END), 0)
-      AS net_total
-
-    FROM transaction t
+    FROM "transaction" t
     JOIN category c ON c.id = t.category_id
     WHERE t.period_id = $1
       AND c.kind <> 'TRANSFER'
@@ -129,4 +124,45 @@ export async function getPeriodsTrend(n = 6) {
   );
 
   return rows;
+}
+
+export async function getRecurringCommitmentsTotal(periodId: string) {
+  const { rows } = await pool.query(
+    `
+    WITH p AS (
+      SELECT
+        start_date::date AS p_start,
+        COALESCE(end_date::date, (start_date + INTERVAL '30 day')::date) AS p_end
+      FROM period
+      WHERE id = $1
+    ),
+    rec AS (
+      SELECT r.*, p.p_start, p.p_end
+      FROM recurring_commitment r
+      CROSS JOIN p
+      WHERE r.active = true
+        AND r.start_date <= p.p_end
+        AND COALESCE(r.end_date, p.p_end) >= p.p_start
+    )
+    SELECT
+      COALESCE(SUM(r.amount * gs.cnt), 0)::int AS commitments_total
+    FROM rec r
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS cnt
+      FROM generate_series(
+        GREATEST(r.start_date, r.p_start),
+        LEAST(COALESCE(r.end_date, r.p_end), r.p_end),
+        CASE r.frequency
+          WHEN 'WEEKLY' THEN interval '1 week'
+          WHEN 'MONTHLY' THEN interval '1 month'
+          WHEN 'YEARLY' THEN interval '1 year'
+          ELSE interval '1 month'
+        END
+      ) AS s
+    ) gs ON TRUE;
+    `,
+    [periodId]
+  );
+
+  return Number(rows[0]?.commitments_total ?? 0);
 }

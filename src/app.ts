@@ -7,6 +7,9 @@ import { periodsRouter } from "./modules/periods/routes";
 import { transactionsRouter } from "./modules/transactions/routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import { dashboardRouter } from "./modules/dashboard/routes";
+import { recurringRouter } from "./modules/recurring/routes";
+import { creditCardPurchasesRouter } from "./modules/credit-card-purchases/routes";
+import { installmentsRouter } from "./modules/installments/routes";
 
 
 export const app = express();
@@ -24,3 +27,6 @@ app.use("/periods", periodsRouter);
 app.use("/transactions", transactionsRouter);
 app.use(errorHandler);
 app.use("/dashboard", dashboardRouter);
+app.use("/recurring", recurringRouter);
+app.use("/credit-card-purchases", creditCardPurchasesRouter);
+app.use("/installments", installmentsRouter);
