@@ -22,3 +22,13 @@ export async function markPaid(req: Request, res: Response) {
   if (!updated) return failure(res, 404, "NOT FOUND", "Cuota no encontrada");
   return success(res, updated, 200, "Cuota marcada como pagada");
 }
+
+export async function summary(req: Request, res: Response) {
+  const parsed = idSchema.safeParse(req.query.periodId);
+  if (!parsed.success) {
+    return failure(res, 412, "PRECONDITION FAILED", "periodId inválido (UUID requerido)");
+  }
+
+  const data = await service.summary(parsed.data);
+  return success(res, data);
+}

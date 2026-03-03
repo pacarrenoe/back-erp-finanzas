@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { success, failure } from "../../../shared/response";
 import * as service from "../services/dashboard.service";
+import { trendQuerySchema } from "../dtos/dashboard.schema"; // opcional
 
 const idSchema = z.string().uuid();
 
@@ -19,11 +20,14 @@ export async function byPeriod(req: Request, res: Response) {
 
   const data = await service.getDashboardByPeriod(parsed.data);
   if (!data) return failure(res, 404, "NOT FOUND", "Período no encontrado");
+
   return success(res, data);
 }
 
 export async function trend(req: Request, res: Response) {
-  const n = Number(req.query.n ?? 6);
-  const data = await service.getTrend(Number.isFinite(n) ? n : 6);
+  // si NO quieres DTO, comenta estas 2 líneas y usa el parse simple que tenías
+  const q = trendQuerySchema.parse(req.query);
+  const data = await service.getTrend(q.n);
+
   return success(res, data);
 }

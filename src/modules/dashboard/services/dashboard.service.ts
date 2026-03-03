@@ -23,12 +23,8 @@ export async function getDashboardByPeriod(periodId: string) {
 
   const kpis = await repo.getPeriodKpis(periodId);
 
-  // compromisos: recurrentes (+ cuotas cuando las agreguemos)
   const recurringTotal = await repo.getRecurringCommitmentsTotal(periodId);
-  const installmentsTotal = repo.getInstallmentsPendingTotal
-    ? await repo.getInstallmentsPendingTotal(periodId)
-    : 0;
-
+  const installmentsTotal = await repo.getInstallmentsPendingTotal(periodId);
   const commitmentsTotal = recurringTotal + installmentsTotal;
 
   const byCategory = await repo.getBreakdownByCategory(periodId);
@@ -37,8 +33,8 @@ export async function getDashboardByPeriod(periodId: string) {
   const baseIncome =
     Number(period.base_salary_amount ?? 0) + Number(period.pluxee_amount ?? 0);
 
-  const txIncome = Number(kpis.tx_income_total ?? 0);
-  const txExpense = Number(kpis.tx_expense_total ?? 0);
+  const txIncome = Number(kpis?.tx_income_total ?? 0);
+  const txExpense = Number(kpis?.tx_expense_total ?? 0);
 
   const incomeTotal = baseIncome + txIncome;
   const expenseTotal = txExpense;

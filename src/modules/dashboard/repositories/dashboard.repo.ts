@@ -10,13 +10,12 @@ export type PeriodRow = {
 };
 
 export async function getCurrentPeriod(): Promise<PeriodRow | null> {
-  // "actual" = hoy entre start/end, si no existe, usa el último por start_date
   const { rows } = await pool.query(
     `
     WITH current_p AS (
       SELECT *
       FROM period
-      WHERE CURRENT_DATE BETWEEN start_date AND COALESCE(end_date, start_date + INTERVAL '30 day')
+      WHERE CURRENT_DATE BETWEEN start_date AND COALESCE(end_date, (start_date + INTERVAL '30 day')::date)
       ORDER BY start_date DESC
       LIMIT 1
     )
@@ -42,10 +41,8 @@ export async function getPeriodKpis(periodId: string) {
     `
     SELECT
       $1::uuid as period_id,
-
       COALESCE(SUM(CASE WHEN t.direction = 'IN'  AND c.kind = 'INCOME'  THEN t.amount END), 0)::int AS tx_income_total,
       COALESCE(SUM(CASE WHEN t.direction = 'OUT' AND c.kind = 'EXPENSE' THEN t.amount END), 0)::int AS tx_expense_total
-
     FROM "transaction" t
     JOIN category c ON c.id = t.category_id
     WHERE t.period_id = $1
@@ -53,7 +50,6 @@ export async function getPeriodKpis(periodId: string) {
     `,
     [periodId]
   );
-
   return rows[0];
 }
 
@@ -64,7 +60,7 @@ export async function getBreakdownByCategory(periodId: string) {
       c.kind,
       c.name,
       SUM(t.amount)::int AS total
-    FROM transaction t
+    FROM "transaction" t
     JOIN category c ON c.id = t.category_id
     WHERE t.period_id = $1
       AND c.kind IN ('INCOME','EXPENSE')
@@ -84,7 +80,7 @@ export async function getBreakdownByAccount(periodId: string) {
       a.type,
       SUM(CASE WHEN t.direction='OUT' THEN t.amount ELSE 0 END)::int AS out_total,
       SUM(CASE WHEN t.direction='IN'  THEN t.amount ELSE 0 END)::int AS in_total
-    FROM transaction t
+    FROM "transaction" t
     JOIN account a ON a.id = t.account_id
     JOIN category c ON c.id = t.category_id
     WHERE t.period_id = $1
@@ -110,19 +106,16 @@ export async function getPeriodsTrend(n = 6) {
       p.id,
       p.start_date,
       p.end_date,
-
       COALESCE(SUM(CASE WHEN t.direction = 'IN'  AND c.kind='INCOME'  THEN t.amount END), 0)::int AS income_total,
       COALESCE(SUM(CASE WHEN t.direction = 'OUT' AND c.kind='EXPENSE' THEN t.amount END), 0)::int AS expense_total
-
     FROM last_periods p
-    LEFT JOIN transaction t ON t.period_id = p.id
+    LEFT JOIN "transaction" t ON t.period_id = p.id
     LEFT JOIN category c ON c.id = t.category_id
     GROUP BY p.id, p.start_date, p.end_date
     ORDER BY p.start_date ASC;
     `,
     [n]
   );
-
   return rows;
 }
 
@@ -163,6 +156,18 @@ export async function getRecurringCommitmentsTotal(periodId: string) {
     `,
     [periodId]
   );
-
   return Number(rows[0]?.commitments_total ?? 0);
+}
+
+export async function getInstallmentsPendingTotal(periodId: string) {
+  const { rows } = await pool.query(
+    `
+    SELECT COALESCE(SUM(amount), 0)::int AS installments_total
+    FROM installment
+    WHERE period_id = $1
+      AND status = 'PENDING'
+    `,
+    [periodId]
+  );
+  return Number(rows[0]?.installments_total ?? 0);
 }

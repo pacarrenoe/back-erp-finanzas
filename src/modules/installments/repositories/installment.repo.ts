@@ -63,3 +63,19 @@ export async function markPaid(id: string, paidTxId?: string) {
   );
   return rows[0] ?? null;
 }
+
+export async function getSummaryByPeriod(periodId: string) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      COALESCE(SUM(CASE WHEN status='PENDING' THEN amount END), 0)::int AS pending_total,
+      COALESCE(SUM(CASE WHEN status='PAID' THEN amount END), 0)::int AS paid_total,
+      COALESCE(COUNT(*) FILTER (WHERE status='PENDING'), 0)::int AS pending_count,
+      COALESCE(COUNT(*) FILTER (WHERE status='PAID'), 0)::int AS paid_count
+    FROM installment
+    WHERE period_id = $1
+    `,
+    [periodId]
+  );
+  return rows[0];
+}
