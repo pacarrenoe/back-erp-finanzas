@@ -12,6 +12,7 @@ import { recurringRouter } from "./modules/recurring/routes";
 import { creditCardPurchasesRouter } from "./modules/credit-card-purchases/routes";
 import { installmentsRouter } from "./modules/installments/routes";
 import { projectionRouter } from "./modules/projection/routes";
+import { debtsRouter } from "./modules/debts/routes";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -61,6 +62,7 @@ app.use("/recurring", recurringRouter);
 app.use("/credit-card-purchases", creditCardPurchasesRouter);
 app.use("/installments", installmentsRouter);
 app.use("/projection", projectionRouter);
+app.use("/debts", debtsRouter);
 
 /* =============================
    ERROR HANDLER (SIEMPRE AL FINAL)
