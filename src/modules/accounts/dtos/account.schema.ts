@@ -9,9 +9,9 @@ export const accountTypeEnum = z.enum([
 ]);
 
 export const createAccountSchema = z.object({
-  name: z.string().min(2),
+  name: z.string().min(2, "name muy corto"),
   type: accountTypeEnum,
-  currency: z.string().min(3).max(3).default("CLP"),
+  currency: z.string().length(3).default("CLP"),
   bank: z.string().min(2).optional(),
   last4: z.string().regex(/^\d{4}$/).optional(),
   credit_limit: z.number().int().positive().optional(),
