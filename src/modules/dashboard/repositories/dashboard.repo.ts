@@ -171,3 +171,18 @@ export async function getInstallmentsPendingTotal(periodId: string) {
   );
   return Number(rows[0]?.installments_total ?? 0);
 }
+
+export async function getDebtScheduleByPeriod(start: string, end: string) {
+  const { rows } = await pool.query(
+    `
+    SELECT d.direction, SUM(s.amount)::int AS total
+    FROM debt_payment_schedule s
+    JOIN debt d ON d.id = s.debt_id
+    WHERE s.status = 'PENDING'
+      AND s.due_date BETWEEN $1 AND $2
+    GROUP BY d.direction
+    `,
+    [start, end]
+  );
+  return rows;
+}

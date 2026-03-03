@@ -31,3 +31,17 @@ export async function getRecurringAll() {
   `);
   return rows;
 }
+
+export async function getDebtFuture(fromDate: string) {
+  const { rows } = await pool.query(
+    `
+    SELECT d.direction, s.due_date, s.amount
+    FROM debt_payment_schedule s
+    JOIN debt d ON d.id = s.debt_id
+    WHERE s.status = 'PENDING'
+      AND s.due_date >= $1
+    `,
+    [fromDate]
+  );
+  return rows;
+}

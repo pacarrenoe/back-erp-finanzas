@@ -1,19 +1,20 @@
 import * as repo from "../repositories/dashboard.repo";
 
-function calcRisk(income: number, totalOut: number, available: number) {
-  const ratio = income > 0 ? totalOut / income : 1;
+function calculateRisk(income: number, commitments: number) {
+  if (income <= 0) return "CRITICO";
 
-  let level: "BAJO" | "MEDIO" | "ALTO" | "CRITICO" = "BAJO";
-  if (available < 0) level = "CRITICO";
-  else if (ratio > 0.6) level = "ALTO";
-  else if (ratio >= 0.4) level = "MEDIO";
+  const ratio = commitments / income;
 
-  return { ratio, level };
+  if (commitments > income) return "CRITICO";
+  if (ratio > 0.6) return "ALTO";
+  if (ratio > 0.4) return "MEDIO";
+  return "BAJO";
 }
 
 export async function getCurrentDashboard() {
   const period = await repo.getCurrentPeriod();
   if (!period) return null;
+
   return getDashboardByPeriod(period.id);
 }
 
@@ -22,50 +23,72 @@ export async function getDashboardByPeriod(periodId: string) {
   if (!period) return null;
 
   const kpis = await repo.getPeriodKpis(periodId);
-
   const recurringTotal = await repo.getRecurringCommitmentsTotal(periodId);
   const installmentsTotal = await repo.getInstallmentsPendingTotal(periodId);
-  const commitmentsTotal = recurringTotal + installmentsTotal;
 
-  const byCategory = await repo.getBreakdownByCategory(periodId);
-  const byAccount = await repo.getBreakdownByAccount(periodId);
+  const breakdownCategory = await repo.getBreakdownByCategory(periodId);
+  const breakdownAccount = await repo.getBreakdownByAccount(periodId);
 
-  const baseIncome =
-    Number(period.base_salary_amount ?? 0) + Number(period.pluxee_amount ?? 0);
+  // 🔥 DEUDAS INTEGRADAS
+  const periodStart = period.start_date;
+  const periodEnd =
+    period.end_date ??
+    new Date(
+      new Date(period.start_date).setMonth(
+        new Date(period.start_date).getMonth() + 1
+      )
+    )
+      .toISOString()
+      .split("T")[0];
+
+  const debtRows = await repo.getDebtScheduleByPeriod(
+    periodStart,
+    periodEnd
+  );
+
+  let debtIncome = 0;
+  let debtCommitments = 0;
+
+  for (const row of debtRows) {
+    if (row.direction === "OWE_ME")
+      debtIncome += Number(row.total);
+    if (row.direction === "I_OWE")
+      debtCommitments += Number(row.total);
+  }
 
   const txIncome = Number(kpis?.tx_income_total ?? 0);
   const txExpense = Number(kpis?.tx_expense_total ?? 0);
 
-  const incomeTotal = baseIncome + txIncome;
-  const expenseTotal = txExpense;
+  const baseSalary = Number(period.base_salary_amount ?? 0);
+  const pluxee = Number(period.pluxee_amount ?? 0);
 
-  const totalOut = expenseTotal + commitmentsTotal;
-  const availableTotal = incomeTotal - totalOut;
+  const incomeTotal =
+    baseSalary + pluxee + txIncome + debtIncome;
 
-  const risk = calcRisk(incomeTotal, totalOut, availableTotal);
+  const commitmentsTotal =
+    recurringTotal +
+    installmentsTotal +
+    debtCommitments;
+
+  const realExpenseTotal = txExpense;
+
+  const projectedAvailable =
+    incomeTotal - commitmentsTotal - realExpenseTotal;
+
+  const riskLevel = calculateRisk(
+    incomeTotal,
+    commitmentsTotal
+  );
 
   return {
-    period: {
-      id: period.id,
-      start_date: period.start_date,
-      end_date: period.end_date,
-      salary_pay_date: period.salary_pay_date,
-      base_salary_amount: Number(period.base_salary_amount ?? 0),
-      pluxee_amount: Number(period.pluxee_amount ?? 0),
-    },
-    kpis: {
-      income_total: incomeTotal,
-      expense_total: expenseTotal,
-      commitments_total: commitmentsTotal,
-      total_out: totalOut,
-      available_total: availableTotal,
-      commitment_ratio: Number(risk.ratio.toFixed(4)),
-      risk_level: risk.level,
-    },
-    breakdown: {
-      by_category: byCategory,
-      by_account: byAccount,
-    },
+    period,
+    income_total: incomeTotal,
+    commitments_total: commitmentsTotal,
+    expense_total: realExpenseTotal,
+    projected_available: projectedAvailable,
+    risk_level: riskLevel,
+    breakdown_category: breakdownCategory,
+    breakdown_account: breakdownAccount,
   };
 }
 
