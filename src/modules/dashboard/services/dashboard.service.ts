@@ -1,4 +1,5 @@
 import * as repo from "../repositories/dashboard.repo";
+import * as budgetRepo from "../../budget/repositories/budget.repo";
 
 function calculateRisk(income: number, commitments: number) {
   if (income <= 0) return "CRITICO";
@@ -29,7 +30,7 @@ export async function getDashboardByPeriod(periodId: string) {
   const breakdownCategory = await repo.getBreakdownByCategory(periodId);
   const breakdownAccount = await repo.getBreakdownByAccount(periodId);
 
-  // 🔥 DEUDAS INTEGRADAS
+  // 🟣 DEUDAS
   const periodStart = period.start_date;
   const periodEnd =
     period.end_date ??
@@ -63,7 +64,10 @@ export async function getDashboardByPeriod(periodId: string) {
   const pluxee = Number(period.pluxee_amount ?? 0);
 
   const incomeTotal =
-    baseSalary + pluxee + txIncome + debtIncome;
+    baseSalary +
+    pluxee +
+    txIncome +
+    debtIncome;
 
   const commitmentsTotal =
     recurringTotal +
@@ -73,22 +77,91 @@ export async function getDashboardByPeriod(periodId: string) {
   const realExpenseTotal = txExpense;
 
   const projectedAvailable =
-    incomeTotal - commitmentsTotal - realExpenseTotal;
+    incomeTotal -
+    commitmentsTotal -
+    realExpenseTotal;
+
+  const commitmentRatio =
+    incomeTotal > 0
+      ? Number((commitmentsTotal / incomeTotal * 100).toFixed(2))
+      : 0;
+
+  const debtServiceRatio =
+    incomeTotal > 0
+      ? Number((installmentsTotal / incomeTotal * 100).toFixed(2))
+      : 0;
 
   const riskLevel = calculateRisk(
     incomeTotal,
     commitmentsTotal
   );
 
+  // 🔵 BUDGET ALERTS
+  const rules = await budgetRepo.getActiveRules();
+  const alerts: any[] = [];
+
+  for (const rule of rules) {
+    const categoryTotal = breakdownCategory.find(
+      (c: any) =>
+        c.name === rule.category_name &&
+        c.kind === "EXPENSE"
+    );
+
+    const spent = Number(categoryTotal?.total ?? 0);
+
+    if (spent >= rule.limit_amount) {
+      alerts.push({
+        type: "LIMIT_EXCEEDED",
+        category: rule.category_name,
+        spent,
+        limit: rule.limit_amount,
+      });
+    } else if (
+      spent >=
+      (rule.limit_amount * rule.alert_threshold_pct) / 100
+    ) {
+      alerts.push({
+        type: "NEAR_LIMIT",
+        category: rule.category_name,
+        spent,
+        limit: rule.limit_amount,
+      });
+    }
+  }
+
+  // 🔴 ALERTA GLOBAL SOBRE-ENDEUDAMIENTO
+  if (commitmentRatio > 60) {
+    alerts.push({
+      type: "OVERCOMMITMENT",
+      message: "Compromisos superan 60% del ingreso"
+    });
+  }
+
+  if (projectedAvailable < 0) {
+    alerts.push({
+      type: "NEGATIVE_PROJECTION",
+      message: "Saldo proyectado negativo al cierre"
+    });
+  }
+
   return {
     period,
+
     income_total: incomeTotal,
     commitments_total: commitmentsTotal,
     expense_total: realExpenseTotal,
+
     projected_available: projectedAvailable,
+
+    commitment_ratio_pct: commitmentRatio,
+    debt_service_ratio_pct: debtServiceRatio,
+
     risk_level: riskLevel,
+
     breakdown_category: breakdownCategory,
     breakdown_account: breakdownAccount,
+
+    alerts,
   };
 }
 

@@ -18,5 +18,5 @@ CREATE TABLE IF NOT EXISTS debt_payment_schedule (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_debt_status ON debt(status);
+CREATE INDEX IF NOT EXISTS idx_debt_schedule_status ON debt_payment_schedule(status);
 CREATE INDEX idx_debt_schedule_due ON debt_payment_schedule(due_date);
