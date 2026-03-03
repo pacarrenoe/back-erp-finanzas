@@ -6,6 +6,8 @@ import { categoriesRouter } from "./modules/categories/routes";
 import { periodsRouter } from "./modules/periods/routes";
 import { transactionsRouter } from "./modules/transactions/routes";
 import { errorHandler } from "./middlewares/errorHandler";
+import { dashboardRouter } from "./modules/dashboard/routes";
+
 
 export const app = express();
 
@@ -21,3 +23,4 @@ app.use("/categories", categoriesRouter);
 app.use("/periods", periodsRouter);
 app.use("/transactions", transactionsRouter);
 app.use(errorHandler);
+app.use("/dashboard", dashboardRouter);

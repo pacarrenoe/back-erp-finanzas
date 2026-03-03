@@ -1,6 +1,11 @@
 import { Response } from "express";
 
-export function success(res: Response, data: any, code = 200, message = "Respuesta exitosa") {
+export function success(
+  res: Response,
+  data: any,
+  code = 200,
+  message = "Respuesta exitosa"
+) {
   return res.status(code).json({
     status: {
       code: String(code),
@@ -14,7 +19,7 @@ export function success(res: Response, data: any, code = 200, message = "Respues
 export function failure(
   res: Response,
   code = 500,
-  message = "Internal Server Error",
+  message = "INTERNAL SERVER ERROR",
   errorMessage?: string
 ) {
   return res.status(code).json({
