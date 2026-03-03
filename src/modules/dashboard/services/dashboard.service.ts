@@ -11,12 +11,25 @@ function calcRisk(income: number, totalOut: number, available: number) {
   return { ratio, level };
 }
 
+export async function getCurrentDashboard() {
+  const period = await repo.getCurrentPeriod();
+  if (!period) return null;
+  return getDashboardByPeriod(period.id);
+}
+
 export async function getDashboardByPeriod(periodId: string) {
   const period = await repo.getPeriodById(periodId);
   if (!period) return null;
 
   const kpis = await repo.getPeriodKpis(periodId);
-  const commitmentsTotal = await repo.getRecurringCommitmentsTotal(periodId);
+
+  // compromisos: recurrentes (+ cuotas cuando las agreguemos)
+  const recurringTotal = await repo.getRecurringCommitmentsTotal(periodId);
+  const installmentsTotal = repo.getInstallmentsPendingTotal
+    ? await repo.getInstallmentsPendingTotal(periodId)
+    : 0;
+
+  const commitmentsTotal = recurringTotal + installmentsTotal;
 
   const byCategory = await repo.getBreakdownByCategory(periodId);
   const byAccount = await repo.getBreakdownByAccount(periodId);
