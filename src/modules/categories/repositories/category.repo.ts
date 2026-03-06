@@ -48,3 +48,59 @@ export async function createCategory(input: CreateCategoryInput): Promise<Catego
   );
   return rows[0];
 }
+
+
+export async function getCategoryById(id: string): Promise<CategoryRow | null> {
+  const { rows } = await pool.query(
+    `
+    SELECT * FROM category
+    WHERE id = $1
+    `,
+    [id]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function updateCategory(
+  id: string,
+  data: Partial<CreateCategoryInput>
+): Promise<CategoryRow> {
+
+  const { rows } = await pool.query(
+    `
+    UPDATE category
+    SET
+      name = COALESCE($1, name),
+      kind = COALESCE($2, kind),
+      parent_id = COALESCE($3, parent_id),
+      active = COALESCE($4, active)
+    WHERE id = $5
+    RETURNING *
+    `,
+    [
+      data.name ?? null,
+      data.kind ?? null,
+      data.parent_id ?? null,
+      data.active ?? null,
+      id
+    ]
+  );
+
+  return rows[0];
+}
+
+
+export async function deleteCategory(id: string): Promise<CategoryRow> {
+  const { rows } = await pool.query(
+    `
+    UPDATE category
+    SET active = false
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id]
+  );
+
+  return rows[0];
+}

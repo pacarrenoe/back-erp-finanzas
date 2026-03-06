@@ -8,3 +8,15 @@ export async function list(filter?: { kind?: string; active?: boolean }) {
 export async function create(input: CreateCategoryInput) {
   return repo.createCategory(input);
 }
+
+export async function getById(id: string) {
+  return repo.getCategoryById(id);
+}
+
+export async function update(id: string, data: Partial<CreateCategoryInput>) {
+  return repo.updateCategory(id, data);
+}
+
+export async function remove(id: string) {
+  return repo.deleteCategory(id);
+}
