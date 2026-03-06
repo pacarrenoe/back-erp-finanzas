@@ -12,3 +12,15 @@ export async function create(input: any) {
 export async function list(periodId?: string) {
   return repo.listTransactions(periodId);
 }
+
+export async function getById(id: string) {
+  return repo.findTransactionById(id);
+}
+
+export async function update(id: string, data: any) {
+  return repo.updateTransaction(id, data);
+}
+
+export async function remove(id: string) {
+  return repo.deleteTransaction(id);
+}

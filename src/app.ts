@@ -19,16 +19,8 @@ import { errorHandler } from "./middlewares/errorHandler";
 
 export const app = express();
 
-/* =============================
-   GLOBAL MIDDLEWARES
-============================= */
-
 app.use(cors());
 app.use(express.json());
-
-/* =============================
-   HEALTH CHECK (PÚBLICO)
-============================= */
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -38,21 +30,9 @@ app.get("/health", (_req, res) => {
   });
 });
 
-/* =============================
-   AUTH (PÚBLICO)
-============================= */
-
 app.use("/auth", authRouter);
 
-/* =============================
-   PROTEGER TODO LO DEMÁS
-============================= */
-
 app.use(authMiddleware);
-
-/* =============================
-   RUTAS PROTEGIDAS
-============================= */
 
 app.use("/accounts", accountsRouter);
 app.use("/categories", categoriesRouter);
@@ -65,9 +45,5 @@ app.use("/installments", installmentsRouter);
 app.use("/projection", projectionRouter);
 app.use("/debts", debtsRouter);
 app.use("/budget", budgetRouter);
-
-/* =============================
-   ERROR HANDLER (SIEMPRE AL FINAL)
-============================= */
 
 app.use(errorHandler);
