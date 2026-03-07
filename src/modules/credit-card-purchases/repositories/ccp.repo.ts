@@ -6,9 +6,9 @@ export async function createPurchaseRow(data:any){
 
   `
   INSERT INTO credit_card_purchase
-  (transaction_id,total_amount,installments,installment_amount,first_installment_date,card_account_id,status)
+  (transaction_id,total_amount,installments,installment_amount,first_installment_date,card_account_id,description,status)
 
-  VALUES ($1,$2,$3,$4,$5,$6,'ACTIVE')
+  VALUES ($1,$2,$3,$4,$5,$6,$7,'ACTIVE')
 
   RETURNING *
   `,
@@ -19,7 +19,8 @@ export async function createPurchaseRow(data:any){
     data.installments,
     data.installment_amount,
     data.first_installment_date,
-    data.card_account_id
+    data.card_account_id,
+    data.description ?? null
 
   ])
 
@@ -29,32 +30,64 @@ export async function createPurchaseRow(data:any){
 
 export async function listPurchases(){
 
-  const { rows } = await pool.query(
+const { rows } = await pool.query(
 
-  `
-  SELECT 
+`
+SELECT 
 
-    p.*,
-    a.name as card_name,
-    a.last4 as card_last4,
+p.*,
+a.name as card_name,
+a.last4 as card_last4,
 
-    COUNT(i.id) as total_installments,
-    COUNT(i.id) FILTER (WHERE i.status='PAID') as paid_installments
+COUNT(i.id) as total_installments,
+COUNT(i.id) FILTER (WHERE i.status='PAID') as paid_installments
 
-  FROM credit_card_purchase p
+FROM credit_card_purchase p
 
-  JOIN account a
-  ON a.id = p.card_account_id
+JOIN account a
+ON a.id = p.card_account_id
 
-  LEFT JOIN installment i
-  ON i.purchase_id = p.id
+LEFT JOIN installment i
+ON i.purchase_id = p.id
 
-  GROUP BY p.id,a.name,a.last4
+GROUP BY p.id,a.name,a.last4
 
-  ORDER BY p.created_at DESC
-  `
-  )
+ORDER BY p.created_at DESC
+`
+)
 
-  return rows
+return rows
+
+}
+
+export async function findPurchaseById(id:string){
+
+const { rows } = await pool.query(
+
+`
+SELECT *
+
+FROM credit_card_purchase
+
+WHERE id=$1
+`,
+[id]
+)
+
+return rows[0]
+
+}
+
+export async function deletePurchase(id:string){
+
+await pool.query(
+
+`
+DELETE FROM credit_card_purchase
+
+WHERE id=$1
+`,
+[id]
+)
 
 }

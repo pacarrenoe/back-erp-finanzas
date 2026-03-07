@@ -4,15 +4,17 @@ CREATE TABLE IF NOT EXISTS credit_card_purchase (
 
   transaction_id uuid REFERENCES transaction(id) ON DELETE SET NULL,
 
-  card_account_id uuid NOT NULL REFERENCES account(id) ON DELETE RESTRICT,
+  card_account_id uuid NOT NULL REFERENCES account(id),
 
   total_amount integer NOT NULL CHECK (total_amount > 0),
 
   installments integer NOT NULL CHECK (installments > 0),
 
-  installment_amount integer NOT NULL CHECK (installment_amount > 0),
+  installment_amount integer NOT NULL,
 
   first_installment_date date NOT NULL,
+
+  description text,
 
   status text NOT NULL DEFAULT 'ACTIVE',
 
@@ -20,8 +22,8 @@ CREATE TABLE IF NOT EXISTS credit_card_purchase (
 
 );
 
-CREATE INDEX IF NOT EXISTS idx_ccp_card_account
+CREATE INDEX idx_ccp_account
 ON credit_card_purchase(card_account_id);
 
-CREATE INDEX IF NOT EXISTS idx_ccp_status
+CREATE INDEX idx_ccp_status
 ON credit_card_purchase(status);
