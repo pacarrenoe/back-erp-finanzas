@@ -6,10 +6,6 @@ function addMonths(date: Date, months: number) {
   return d;
 }
 
-export async function createDebt(data: any) {
-  return repo.createDebt(data);
-}
-
 export async function getAll() {
   return repo.getAllDebts();
 }
@@ -54,4 +50,32 @@ export async function getSchedule(debtId: string) {
 
 export async function markPaid(id: string) {
   return repo.markPaid(id);
+}
+
+export async function createDebt(data:any){
+
+  const debt = await repo.createDebt(data)
+
+  const installmentAmount =
+    Math.round(data.principal_amount / data.installments)
+
+  const schedule = []
+
+  for(let i=0;i<data.installments;i++){
+
+    const due = addMonths(new Date(data.first_due_date),i)
+
+    schedule.push({
+
+      due_date: due.toISOString().split("T")[0],
+
+      amount: installmentAmount
+
+    })
+
+  }
+
+  await repo.createSchedule(debt.id,schedule)
+
+  return debt
 }
