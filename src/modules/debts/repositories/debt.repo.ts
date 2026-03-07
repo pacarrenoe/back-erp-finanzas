@@ -18,13 +18,6 @@ export async function createDebt(data: any) {
   return rows[0];
 }
 
-export async function getAllDebts() {
-  const { rows } = await pool.query(
-    `SELECT * FROM debt ORDER BY created_at DESC`
-  );
-
-  return rows;
-}
 
 export async function getDebtById(id: string) {
   const { rows } = await pool.query(
@@ -113,4 +106,36 @@ export async function markPaid(id: string) {
   );
 
   return rows[0];
+}
+
+
+export async function getAllDebts() {
+
+  const { rows } = await pool.query(`
+  
+    SELECT
+      d.*,
+
+      COUNT(s.id) FILTER (WHERE s.status='PAID') AS paid_installments,
+
+      COUNT(s.id) AS total_installments,
+
+      COALESCE(
+        d.principal_amount -
+        SUM(CASE WHEN s.status='PAID' THEN s.amount ELSE 0 END),
+        d.principal_amount
+      ) AS pending_amount
+
+    FROM debt d
+
+    LEFT JOIN debt_payment_schedule s
+      ON s.debt_id = d.id
+
+    GROUP BY d.id
+
+    ORDER BY d.counterparty_name, d.created_at DESC
+  
+  `)
+
+  return rows
 }
