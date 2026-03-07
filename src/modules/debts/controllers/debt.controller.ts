@@ -4,15 +4,14 @@ import {
   createDebtSchema,
   updateDebtSchema,
   createScheduleSchema,
+  payScheduleSchema,
 } from "../dtos/debt.schema";
 import * as service from "../services/debt.service";
 
 export async function create(req: Request, res: Response) {
   try {
     const input = createDebtSchema.parse(req.body);
-
     const debt = await service.createDebt(input);
-
     return success(res, debt, 201);
   } catch (e: any) {
     return failure(res, 400, "BAD REQUEST", e.message);
@@ -20,14 +19,17 @@ export async function create(req: Request, res: Response) {
 }
 
 export async function list(_req: Request, res: Response) {
-  const debts = await service.getAll();
-  return success(res, debts);
+  try {
+    const debts = await service.getAll();
+    return success(res, debts);
+  } catch (e: any) {
+    return failure(res, 500, "SERVER ERROR", e.message);
+  }
 }
 
 export async function getById(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-
     const debt = await service.getById(id);
 
     if (!debt) {
@@ -43,11 +45,8 @@ export async function getById(req: Request, res: Response) {
 export async function update(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-
     const input = updateDebtSchema.parse(req.body);
-
     const updated = await service.update(id, input);
-
     return success(res, updated);
   } catch (e: any) {
     return failure(res, 400, "BAD REQUEST", e.message);
@@ -57,9 +56,7 @@ export async function update(req: Request, res: Response) {
 export async function remove(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-
     await service.remove(id);
-
     return success(res, true);
   } catch (e: any) {
     return failure(res, 500, "SERVER ERROR", e.message);
@@ -69,7 +66,6 @@ export async function remove(req: Request, res: Response) {
 export async function schedule(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-
     const input = createScheduleSchema.parse(req.body);
 
     await service.createSchedule(
@@ -88,9 +84,7 @@ export async function schedule(req: Request, res: Response) {
 export async function getSchedule(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-
     const schedule = await service.getSchedule(id);
-
     return success(res, schedule);
   } catch (e: any) {
     return failure(res, 500, "SERVER ERROR", e.message);
@@ -100,8 +94,13 @@ export async function getSchedule(req: Request, res: Response) {
 export async function markPaid(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
+    const input = payScheduleSchema.parse(req.body);
 
-    const updated = await service.markPaid(id);
+    const updated = await service.markPaid(
+      id,
+      input.account_id,
+      input.payment_method
+    );
 
     return success(res, updated);
   } catch (e: any) {

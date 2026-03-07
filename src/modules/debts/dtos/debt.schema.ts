@@ -1,20 +1,13 @@
 import { z } from "zod";
 
 export const createDebtSchema = z.object({
-
-  direction: z.enum(["I_OWE","OWE_ME"]),
-
+  direction: z.enum(["I_OWE", "OWE_ME"]),
   counterparty_name: z.string(),
-
   description: z.string().optional(),
-
   principal_amount: z.number().positive(),
-
   installments: z.number().min(1),
-
-  first_due_date: z.string()
-
-})
+  first_due_date: z.string(),
+});
 
 export const updateDebtSchema = z.object({
   counterparty_name: z.string().min(2).optional(),
@@ -28,3 +21,7 @@ export const createScheduleSchema = z.object({
   total: z.number().positive(),
 });
 
+export const payScheduleSchema = z.object({
+  account_id: z.string(),
+  payment_method: z.enum(["CASH", "DEBIT", "CREDIT", "TRANSFER"]),
+});

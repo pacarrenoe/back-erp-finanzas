@@ -18,5 +18,19 @@ CREATE TABLE IF NOT EXISTS debt_payment_schedule (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_debt_schedule_status ON debt_payment_schedule(status);
-CREATE INDEX idx_debt_schedule_due ON debt_payment_schedule(due_date);
+CREATE INDEX IF NOT EXISTS idx_debt_schedule_status
+ON debt_payment_schedule(status);
+
+CREATE INDEX IF NOT EXISTS idx_debt_schedule_due
+ON debt_payment_schedule(due_date);
+
+CREATE INDEX IF NOT EXISTS idx_debt_schedule_debt
+ON debt_payment_schedule(debt_id);
+
+ALTER TABLE debt_payment_schedule
+DROP CONSTRAINT IF EXISTS debt_payment_schedule_paid_transaction_id_fkey;
+
+ALTER TABLE debt_payment_schedule
+ADD CONSTRAINT debt_payment_schedule_paid_transaction_id_fkey
+FOREIGN KEY (paid_transaction_id)
+REFERENCES "transaction"(id);

@@ -18,10 +18,9 @@ export async function createDebt(data: any) {
   return rows[0];
 }
 
-
 export async function getDebtById(id: string) {
   const { rows } = await pool.query(
-    `SELECT * FROM debt WHERE id=$1`,
+    `SELECT * FROM debt WHERE id = $1`,
     [id]
   );
 
@@ -41,9 +40,9 @@ export async function updateDebt(id: string, data: any) {
     `,
     [
       id,
-      data.counterparty_name,
-      data.description,
-      data.principal_amount
+      data.counterparty_name ?? null,
+      data.description ?? null,
+      data.principal_amount ?? null,
     ]
   );
 
@@ -51,7 +50,7 @@ export async function updateDebt(id: string, data: any) {
 }
 
 export async function deleteDebt(id: string) {
-  await pool.query(`DELETE FROM debt WHERE id=$1`, [id]);
+  await pool.query(`DELETE FROM debt WHERE id = $1`, [id]);
   return true;
 }
 
@@ -85,7 +84,7 @@ export async function getSchedule(debtId: string) {
     `
     SELECT *
     FROM debt_payment_schedule
-    WHERE debt_id=$1
+    WHERE debt_id = $1
     ORDER BY due_date
     `,
     [debtId]
@@ -94,13 +93,17 @@ export async function getSchedule(debtId: string) {
   return rows;
 }
 
-export async function markPaid(id: string) {
+export async function getScheduleById(id: string) {
   const { rows } = await pool.query(
     `
-    UPDATE debt_payment_schedule
-    SET status='PAID'
-    WHERE id=$1
-    RETURNING *
+    SELECT
+      s.*,
+      d.description,
+      d.counterparty_name,
+      d.direction
+    FROM debt_payment_schedule s
+    JOIN debt d ON d.id = s.debt_id
+    WHERE s.id = $1
     `,
     [id]
   );
@@ -108,34 +111,60 @@ export async function markPaid(id: string) {
   return rows[0];
 }
 
+export async function createTransaction(data: any) {
+  const { rows } = await pool.query(
+    `
+    INSERT INTO transactions
+    (date, description, amount, direction, account_id, payment_method)
+    VALUES ($1,$2,$3,$4,$5,$6)
+    RETURNING *
+    `,
+    [
+      data.date,
+      data.description,
+      data.amount,
+      data.direction,
+      data.account_id,
+      data.payment_method,
+    ]
+  );
+
+  return rows[0];
+}
+
+export async function markSchedulePaid(id: string, transactionId: string) {
+  const { rows } = await pool.query(
+    `
+    UPDATE debt_payment_schedule
+    SET
+      status = 'PAID',
+      paid_transaction_id = $2
+    WHERE id = $1
+    RETURNING *
+    `,
+    [id, transactionId]
+  );
+
+  return rows[0];
+}
 
 export async function getAllDebts() {
-
   const { rows } = await pool.query(`
-  
     SELECT
       d.*,
-
-      COUNT(s.id) FILTER (WHERE s.status='PAID') AS paid_installments,
-
+      COUNT(s.id) FILTER (WHERE s.status = 'PAID') AS paid_installments,
       COUNT(s.id) AS total_installments,
-
       COALESCE(
         d.principal_amount -
-        SUM(CASE WHEN s.status='PAID' THEN s.amount ELSE 0 END),
+        SUM(CASE WHEN s.status = 'PAID' THEN s.amount ELSE 0 END),
         d.principal_amount
       ) AS pending_amount
-
     FROM debt d
-
     LEFT JOIN debt_payment_schedule s
       ON s.debt_id = d.id
-
     GROUP BY d.id
-
     ORDER BY d.counterparty_name, d.created_at DESC
-  
-  `)
+  `);
 
-  return rows
+  return rows;
 }

@@ -48,34 +48,55 @@ export async function getSchedule(debtId: string) {
   return repo.getSchedule(debtId);
 }
 
-export async function markPaid(id: string) {
-  return repo.markPaid(id);
-}
-
-export async function createDebt(data:any){
-
-  const debt = await repo.createDebt(data)
+export async function createDebt(data: any) {
+  const debt = await repo.createDebt(data);
 
   const installmentAmount =
-    Math.round(data.principal_amount / data.installments)
+    Math.round(data.principal_amount / data.installments);
 
-  const schedule = []
+  const schedule = [];
 
-  for(let i=0;i<data.installments;i++){
-
-    const due = addMonths(new Date(data.first_due_date),i)
+  for (let i = 0; i < data.installments; i++) {
+    const due = addMonths(new Date(data.first_due_date), i);
 
     schedule.push({
-
       due_date: due.toISOString().split("T")[0],
-
-      amount: installmentAmount
-
-    })
-
+      amount: installmentAmount,
+    });
   }
 
-  await repo.createSchedule(debt.id,schedule)
+  await repo.createSchedule(debt.id, schedule);
 
-  return debt
+  return debt;
+}
+
+export async function markPaid(
+  scheduleId: string,
+  accountId: string,
+  paymentMethod: string
+) {
+  const schedule = await repo.getScheduleById(scheduleId);
+
+  if (!schedule) {
+    throw new Error("Schedule not found");
+  }
+
+  if (schedule.status === "PAID") {
+    throw new Error("Schedule already paid");
+  }
+
+  const description = schedule.description
+    ? `Pago deuda ${schedule.description}`
+    : `Pago deuda ${schedule.counterparty_name ?? ""}`.trim();
+
+  const transaction = await repo.createTransaction({
+    date: new Date(),
+    description,
+    amount: schedule.amount,
+    direction: "OUT",
+    account_id: accountId,
+    payment_method: paymentMethod,
+  });
+
+  return repo.markSchedulePaid(scheduleId, transaction.id);
 }

@@ -8,4 +8,5 @@ CREATE TABLE IF NOT EXISTS budget_rule (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_budget_rule_category ON budget_rule(category_id);
+CREATE INDEX IF NOT EXISTS idx_budget_rule_category
+ON budget_rule(category_id);
