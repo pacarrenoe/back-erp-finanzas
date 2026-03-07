@@ -14,11 +14,57 @@ export async function createDebt(data: any) {
       data.principal_amount,
     ]
   );
+
   return rows[0];
+}
+
+export async function getAllDebts() {
+  const { rows } = await pool.query(
+    `SELECT * FROM debt ORDER BY created_at DESC`
+  );
+
+  return rows;
+}
+
+export async function getDebtById(id: string) {
+  const { rows } = await pool.query(
+    `SELECT * FROM debt WHERE id=$1`,
+    [id]
+  );
+
+  return rows[0];
+}
+
+export async function updateDebt(id: string, data: any) {
+  const { rows } = await pool.query(
+    `
+    UPDATE debt
+    SET
+      counterparty_name = COALESCE($2, counterparty_name),
+      description = COALESCE($3, description),
+      principal_amount = COALESCE($4, principal_amount)
+    WHERE id = $1
+    RETURNING *
+    `,
+    [
+      id,
+      data.counterparty_name,
+      data.description,
+      data.principal_amount
+    ]
+  );
+
+  return rows[0];
+}
+
+export async function deleteDebt(id: string) {
+  await pool.query(`DELETE FROM debt WHERE id=$1`, [id]);
+  return true;
 }
 
 export async function createSchedule(debtId: string, schedule: any[]) {
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
@@ -41,22 +87,17 @@ export async function createSchedule(debtId: string, schedule: any[]) {
   }
 }
 
-export async function getAllDebts() {
-  const { rows } = await pool.query(`SELECT * FROM debt ORDER BY created_at DESC`);
-  return rows;
-}
-
-export async function getScheduleByPeriod(start: string, end: string) {
+export async function getSchedule(debtId: string) {
   const { rows } = await pool.query(
     `
-    SELECT d.direction, s.*
-    FROM debt_payment_schedule s
-    JOIN debt d ON d.id = s.debt_id
-    WHERE s.status = 'PENDING'
-      AND s.due_date BETWEEN $1 AND $2
+    SELECT *
+    FROM debt_payment_schedule
+    WHERE debt_id=$1
+    ORDER BY due_date
     `,
-    [start, end]
+    [debtId]
   );
+
   return rows;
 }
 
@@ -70,5 +111,6 @@ export async function markPaid(id: string) {
     `,
     [id]
   );
+
   return rows[0];
 }
