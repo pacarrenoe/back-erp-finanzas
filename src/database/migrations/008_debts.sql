@@ -28,9 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_debt_schedule_debt
 ON debt_payment_schedule(debt_id);
 
 ALTER TABLE debt_payment_schedule
+ADD COLUMN IF NOT EXISTS paid_transaction_id uuid;
+
+ALTER TABLE debt_payment_schedule
 DROP CONSTRAINT IF EXISTS debt_payment_schedule_paid_transaction_id_fkey;
 
 ALTER TABLE debt_payment_schedule
 ADD CONSTRAINT debt_payment_schedule_paid_transaction_id_fkey
-FOREIGN KEY (paid_transaction_id)
-REFERENCES "transaction"(id);
+FOREIGN KEY (paid_transaction_id) REFERENCES transaction(id);
