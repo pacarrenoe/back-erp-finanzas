@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS credit_card_purchase (
 
 );
 
-CREATE INDEX idx_ccp_account
+CREATE INDEX IF NOT EXISTS idx_ccp_account
 ON credit_card_purchase(card_account_id);
 
-CREATE INDEX idx_ccp_status
+CREATE INDEX IF NOT EXISTS idx_ccp_status
 ON credit_card_purchase(status);
