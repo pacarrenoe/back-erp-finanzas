@@ -1,22 +1,17 @@
-import * as repo from "../repositories/category.repo";
-import { CreateCategoryInput } from "../dtos/category.schema";
+import * as repo from "../repositories/category.repo"
 
-export async function list(filter?: { kind?: string; active?: boolean }) {
-  return repo.listCategories(filter);
+export async function list() {
+  return repo.listCategories()
 }
 
-export async function create(input: CreateCategoryInput) {
-  return repo.createCategory(input);
+export async function create(input: any) {
+  return repo.createCategory(input)
 }
 
-export async function getById(id: string) {
-  return repo.getCategoryById(id);
-}
-
-export async function update(id: string, data: Partial<CreateCategoryInput>) {
-  return repo.updateCategory(id, data);
+export async function update(id: string, input: any) {
+  return repo.updateCategory(id, input)
 }
 
 export async function remove(id: string) {
-  return repo.deleteCategory(id);
+  return repo.deleteCategory(id)
 }
