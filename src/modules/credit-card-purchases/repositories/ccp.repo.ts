@@ -91,3 +91,26 @@ WHERE id=$1
 )
 
 }
+
+
+export async function summary(){
+
+const { rows } = await pool.query(
+
+`
+SELECT 
+
+SUM(amount) FILTER (WHERE status='PENDING') as pending_amount,
+
+SUM(amount) FILTER (WHERE status='PAID') as paid_amount,
+
+COUNT(*) FILTER (WHERE status='PENDING') as pending_installments
+
+FROM installment
+`
+
+)
+
+return rows[0]
+
+}
