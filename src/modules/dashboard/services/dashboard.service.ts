@@ -151,7 +151,7 @@ export async function getDashboardByPeriod(periodId: string) {
      ALERTAS EXISTENTES
   ===================================================== */
 
-  const rules = await budgetRepo.getActiveRules();
+  const rules = await budgetRepo.getRules(true);
 
   const alerts: any[] = [];
 

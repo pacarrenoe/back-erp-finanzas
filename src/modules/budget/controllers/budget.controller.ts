@@ -35,7 +35,8 @@ export async function list(req: Request, res: Response) {
 
 export async function getById(req: Request, res: Response) {
   try {
-    const rule = await service.getOne(req.params.id);
+    const id = req.params.id as string;
+    const rule = await service.getOne(id);
     return success(res, rule);
   } catch (e: any) {
     return failure(res, 404, "NOT FOUND", e.message);

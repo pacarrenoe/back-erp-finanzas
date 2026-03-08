@@ -162,7 +162,7 @@ export async function createTransaction(
 
   const { rows } = await client.query(
     `
-    INSERT INTO transaction
+    INSERT INTO "transaction"
     (
       date,
       description,
