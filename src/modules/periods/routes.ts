@@ -1,7 +1,11 @@
-import { Router } from "express";
-import * as ctrl from "./controllers/period.controller";
+import { Router } from "express"
 
-export const periodsRouter = Router();
+import * as ctrl from "./controllers/period.controller"
 
-periodsRouter.get("/", ctrl.list);
-periodsRouter.post("/", ctrl.create);
+export const periodsRouter = Router()
+
+periodsRouter.get("/",ctrl.list)
+
+periodsRouter.get("/current",ctrl.current)
+
+periodsRouter.post("/",ctrl.create)

@@ -1,30 +1,54 @@
-import * as repo from "../repositories/period.repo";
+import * as repo from "../repositories/period.repo"
 
-export async function create(input: any) {
-  const startDate = new Date(input.salary_pay_date);
+function addDays(date:string,days:number){
 
-  // provisional end date: +30 días
-  const provisionalEnd = new Date(startDate);
-  provisionalEnd.setDate(provisionalEnd.getDate() + 30);
+const d = new Date(date)
 
-  let pluxeeAmount = null;
+d.setDate(d.getDate()+days)
 
-  if (input.days_worked && input.pluxee_per_day) {
-    pluxeeAmount = input.days_worked * input.pluxee_per_day;
-  }
+return d.toISOString().slice(0,10)
 
-  return repo.createPeriod({
-    start_date: input.salary_pay_date,
-    end_date: provisionalEnd.toISOString().slice(0, 10),
-    salary_pay_date: input.salary_pay_date,
-    base_salary_amount: input.base_salary_amount,
-    days_worked: input.days_worked,
-    pluxee_per_day: input.pluxee_per_day,
-    pluxee_amount: pluxeeAmount,
-    notes: input.notes,
-  });
 }
 
-export async function list() {
-  return repo.listPeriods();
+export async function create(input:any){
+
+const startDate = input.salary_pay_date
+
+const endDate = addDays(startDate,30)
+
+await repo.closePreviousPeriod(addDays(startDate,-1))
+
+let pluxeeAmount = null
+
+if(input.days_worked && input.pluxee_per_day){
+
+pluxeeAmount = input.days_worked * input.pluxee_per_day
+
+}
+
+return repo.createPeriod({
+
+start_date:startDate,
+end_date:endDate,
+salary_pay_date:startDate,
+base_salary_amount:input.base_salary_amount,
+days_worked:input.days_worked,
+pluxee_per_day:input.pluxee_per_day,
+pluxee_amount:pluxeeAmount,
+notes:input.notes
+
+})
+
+}
+
+export async function list(){
+
+return repo.listPeriods()
+
+}
+
+export async function current(){
+
+return repo.getCurrentPeriod()
+
 }
