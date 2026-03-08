@@ -183,3 +183,37 @@ export async function markPaid(
   }
 
 }
+
+
+export async function createSchedule(
+  debtId: string,
+  installments: number,
+  firstDueDate: string,
+  total: number
+) {
+
+  const installmentAmount =
+    Math.round(total / installments);
+
+  const schedule = [];
+
+  for (let i = 0; i < installments; i++) {
+
+    const due =
+      addMonths(new Date(firstDueDate), i);
+
+    schedule.push({
+
+      due_date:
+        due.toISOString().split("T")[0],
+
+      amount:
+        installmentAmount
+
+    });
+
+  }
+
+  await repo.createSchedule(debtId, schedule);
+
+}

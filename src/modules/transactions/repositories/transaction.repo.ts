@@ -17,7 +17,7 @@ export async function findPeriodByDate(date: string) {
 export async function createTransaction(data: any) {
   const { rows } = await pool.query(
     `
-    INSERT INTO transaction
+    INSERT INTO "transaction"
     (date, description, amount, direction, account_id, category_id, period_id, payment_method, merchant)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     RETURNING *

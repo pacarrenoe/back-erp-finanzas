@@ -2,105 +2,218 @@ import * as repo from "../repositories/projection.repo";
 
 type ProjectionPeriod = {
   index: number;
+  period_id: string | null;
+  period_label: string;
   start_date: string;
   end_date: string;
-  income_expected: number;
-  commitments_expected: number;
-  projected_available: number;
-  risk_level: string;
+  expected_income: number;
+  expected_commitments: number;
+  projected_balance: number;
+  commitment_ratio: number;
+  debt_ratio: number;
+  risk_level: "BAJO" | "MEDIO" | "ALTO" | "CRITICO";
 };
 
-function addMonths(date: Date, months: number) {
+type BasePeriod = {
+  id: string | null;
+  start_date: string;
+  end_date: string;
+  base_salary_amount: number;
+  pluxee_amount: number;
+};
+
+function toDateOnly(value: string | Date) {
+  return new Date(value).toISOString().split("T")[0];
+}
+
+function addDays(date: Date, days: number) {
   const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
+  d.setDate(d.getDate() + days);
   return d;
 }
 
-function calculateRisk(income: number, commitments: number) {
+function diffDaysInclusive(start: Date, end: Date) {
+  const ms = end.getTime() - start.getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function calculateRisk(
+  income: number,
+  commitments: number,
+  projectedBalance: number
+): "BAJO" | "MEDIO" | "ALTO" | "CRITICO" {
   if (income <= 0) return "CRITICO";
+  if (projectedBalance < 0) return "CRITICO";
 
   const ratio = commitments / income;
 
-  if (commitments > income) return "CRITICO";
   if (ratio > 0.6) return "ALTO";
   if (ratio > 0.4) return "MEDIO";
   return "BAJO";
 }
 
-export async function project(n = 6): Promise<ProjectionPeriod[]> {
+function buildPeriodLabel(startDate: string, endDate: string) {
+  return `${startDate} → ${endDate}`;
+}
+
+async function resolveBasePeriod(startPeriodId?: string): Promise<BasePeriod | null> {
+  if (startPeriodId) {
+    const period = await repo.getPeriodById(startPeriodId);
+    if (!period) return null;
+
+    return {
+      id: period.id,
+      start_date: toDateOnly(period.start_date),
+      end_date: toDateOnly(period.end_date),
+      base_salary_amount: Number(period.base_salary_amount ?? 0),
+      pluxee_amount: Number(period.pluxee_amount ?? 0),
+    };
+  }
+
   const last = await repo.getLastPeriod();
-  if (!last) return [];
+  if (!last) return null;
 
-  const installments = await repo.getInstallmentsFuture(
-    last.start_date
+  return {
+    id: last.id,
+    start_date: toDateOnly(last.start_date),
+    end_date: toDateOnly(last.end_date),
+    base_salary_amount: Number(last.base_salary_amount ?? 0),
+    pluxee_amount: Number(last.pluxee_amount ?? 0),
+  };
+}
+
+function buildVirtualPeriods(base: BasePeriod, count: number) {
+  const baseStart = new Date(base.start_date);
+  const baseEnd = new Date(base.end_date);
+  const durationDays = diffDaysInclusive(baseStart, baseEnd);
+
+  const periods = [];
+
+  for (let i = 0; i < count; i++) {
+    const start = addDays(baseStart, i * durationDays);
+    const end = addDays(start, durationDays - 1);
+
+    periods.push({
+      id: null as string | null,
+      start_date: toDateOnly(start),
+      end_date: toDateOnly(end),
+      base_salary_amount: base.base_salary_amount,
+      pluxee_amount: base.pluxee_amount,
+    });
+  }
+
+  return periods;
+}
+
+export async function project(
+  periodsCount = 6,
+  startPeriodId?: string
+): Promise<ProjectionPeriod[]> {
+  const basePeriod = await resolveBasePeriod(startPeriodId);
+  if (!basePeriod) return [];
+
+  const existingPeriods = await repo.getFuturePeriodsFrom(
+    basePeriod.start_date,
+    periodsCount
   );
-  const recurrent = await repo.getRecurringAll();
-  const debts = await repo.getDebtFuture(last.start_date);
 
-  const salary = Number(last.base_salary_amount ?? 0);
-  const pluxee = Number(last.pluxee_amount ?? 0);
+  let periods = existingPeriods.map((p) => ({
+    id: p.id as string,
+    start_date: toDateOnly(p.start_date),
+    end_date: toDateOnly(p.end_date),
+    base_salary_amount: Number(p.base_salary_amount ?? basePeriod.base_salary_amount ?? 0),
+    pluxee_amount: Number(p.pluxee_amount ?? basePeriod.pluxee_amount ?? 0),
+  }));
 
-  const results: ProjectionPeriod[] = [];
+  if (periods.length < periodsCount) {
+    const virtualPeriods = buildVirtualPeriods(basePeriod, periodsCount);
 
-  for (let i = 0; i < n; i++) {
-    const start = addMonths(new Date(last.start_date), i);
-    const end = addMonths(new Date(last.start_date), i + 1);
+    periods = virtualPeriods.map((vp, index) => {
+      const real = periods[index];
+      return real ?? vp;
+    });
+  }
+
+  periods = periods.slice(0, periodsCount);
+
+  const firstStartDate = periods[0].start_date;
+
+  const installments = await repo.getInstallmentsFuture(firstStartDate);
+  const recurring = await repo.getRecurringAll();
+  const debts = await repo.getDebtFuture(firstStartDate);
+
+  const recurringTotalPerPeriod = recurring.reduce(
+    (sum, item) => sum + Number(item.amount ?? 0),
+    0
+  );
+
+  const results: ProjectionPeriod[] = periods.map((period, index) => {
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
 
     const installmentTotal = installments
-      .filter(
-        (ins) =>
-          new Date(ins.due_date) >= start &&
-          new Date(ins.due_date) < end
-      )
-      .reduce((sum, i) => sum + Number(i.amount), 0);
+      .filter((item) => {
+        const due = new Date(item.due_date);
+        return due >= start && due <= end;
+      })
+      .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
 
-    const recurringTotal = recurrent.reduce(
-      (sum, r) => sum + Number(r.amount),
-      0
-    );
-
-    const debtForPeriod = debts.filter(
-      (d) =>
-        new Date(d.due_date) >= start &&
-        new Date(d.due_date) < end
-    );
+    const debtsInRange = debts.filter((item) => {
+      const due = new Date(item.due_date);
+      return due >= start && due <= end;
+    });
 
     let debtIncome = 0;
     let debtCommitments = 0;
 
-    for (const d of debtForPeriod) {
-      if (d.direction === "OWE_ME")
-        debtIncome += Number(d.amount);
-      if (d.direction === "I_OWE")
-        debtCommitments += Number(d.amount);
+    for (const debt of debtsInRange) {
+      const amount = Number(debt.amount ?? 0);
+      if (debt.direction === "OWE_ME") debtIncome += amount;
+      if (debt.direction === "I_OWE") debtCommitments += amount;
     }
 
-    const incomeExpected =
-      salary + pluxee + debtIncome;
+    const expectedIncome =
+      Number(period.base_salary_amount ?? 0) +
+      Number(period.pluxee_amount ?? 0) +
+      debtIncome;
 
-    const commitmentsExpected =
+    const expectedCommitments =
       installmentTotal +
-      recurringTotal +
+      recurringTotalPerPeriod +
       debtCommitments;
 
-    const projectedAvailable =
-      incomeExpected - commitmentsExpected;
+    const projectedBalance = expectedIncome - expectedCommitments;
+
+    const commitmentRatio =
+      expectedIncome > 0
+        ? Number((expectedCommitments / expectedIncome).toFixed(4))
+        : 0;
+
+    const debtRatio =
+      expectedIncome > 0
+        ? Number(((installmentTotal + debtCommitments) / expectedIncome).toFixed(4))
+        : 0;
 
     const riskLevel = calculateRisk(
-      incomeExpected,
-      commitmentsExpected
+      expectedIncome,
+      expectedCommitments,
+      projectedBalance
     );
 
-    results.push({
-      index: i + 1,
-      start_date: start.toISOString().split("T")[0],
-      end_date: end.toISOString().split("T")[0],
-      income_expected: incomeExpected,
-      commitments_expected: commitmentsExpected,
-      projected_available: projectedAvailable,
+    return {
+      index: index + 1,
+      period_id: period.id,
+      period_label: buildPeriodLabel(period.start_date, period.end_date),
+      start_date: period.start_date,
+      end_date: period.end_date,
+      expected_income: expectedIncome,
+      expected_commitments: expectedCommitments,
+      projected_balance: projectedBalance,
+      commitment_ratio: commitmentRatio,
+      debt_ratio: debtRatio,
       risk_level: riskLevel,
-    });
-  }
+    };
+  });
 
   return results;
 }

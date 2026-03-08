@@ -22,6 +22,6 @@ export const createScheduleSchema = z.object({
 });
 
 export const payScheduleSchema = z.object({
-  account_id: z.string(),
+  account_id: z.string().uuid(),
   payment_method: z.enum(["CASH", "DEBIT", "CREDIT", "TRANSFER"]),
 });
