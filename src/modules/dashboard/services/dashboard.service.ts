@@ -146,18 +146,24 @@ export async function getDashboardByPeriod(periodId: string) {
 
   return {
     period,
-
     income_total: incomeTotal,
     commitments_total: commitmentsTotal,
     expense_total: realExpenseTotal,
-
     projected_available: projectedAvailable,
-
     commitment_ratio_pct: commitmentRatio,
     debt_service_ratio_pct: debtServiceRatio,
-
     risk_level: riskLevel,
-
+    income_breakdown: {
+      salary: baseSalary,
+      pluxee,
+      extra_income: txIncome,
+      debt_collections: debtIncome,
+    },
+    commitments_breakdown: {
+      recurring: recurringTotal,
+      installments: installmentsTotal,
+      debt_payments: debtCommitments,
+    },
     breakdown_category: breakdownCategory,
     breakdown_account: breakdownAccount,
 
