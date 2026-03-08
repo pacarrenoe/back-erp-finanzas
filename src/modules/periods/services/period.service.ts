@@ -1,77 +1,137 @@
 import * as repo from "../repositories/period.repo"
 
-function addDays(date:string,days:number){
+function addDays(date: string, days: number) {
 
-const d = new Date(date)
+  const d = new Date(`${date}T00:00:00`)
 
-d.setDate(d.getDate()+days)
+  d.setDate(d.getDate() + days)
 
-return d.toISOString().slice(0,10)
-
-}
-
-export async function create(input:any){
-
-const startDate = input.salary_pay_date
-
-const endDate = addDays(startDate,30)
-
-await repo.closePreviousPeriod(addDays(startDate,-1))
-
-let pluxeeAmount = null
-
-if(input.days_worked && input.pluxee_per_day){
-
-pluxeeAmount = input.days_worked * input.pluxee_per_day
+  return d.toISOString().slice(0, 10)
 
 }
 
-return repo.createPeriod({
+function countBusinessDaysOfMonth(year: number, month: number) {
 
-start_date:startDate,
-end_date:endDate,
-salary_pay_date:startDate,
-base_salary_amount:input.base_salary_amount,
-days_worked:input.days_worked,
-pluxee_per_day:input.pluxee_per_day,
-pluxee_amount:pluxeeAmount,
-notes:input.notes
+  const date = new Date(year, month, 1)
 
-})
+  let count = 0
 
-}
+  while (date.getMonth() === month) {
 
-export async function list(){
+    const day = date.getDay()
 
-return repo.listPeriods()
+    if (day !== 0 && day !== 6) {
+      count++
+    }
 
-}
+    date.setDate(date.getDate() + 1)
 
-export async function current(){
+  }
 
-return repo.getCurrentPeriod()
+  return count
 
 }
 
-export async function update(id:string,input:any){
+function calculatePluxee(startDate: string, daysWorked: number | undefined, pluxeePerDay: number) {
 
-let pluxeeAmount = null
+  const d = new Date(`${startDate}T00:00:00`)
 
-if(input.days_worked && input.pluxee_per_day){
+  // pluxee corresponde al mes siguiente al sueldo
 
-pluxeeAmount = input.days_worked * input.pluxee_per_day
+  let month = d.getMonth() + 1
+  let year = d.getFullYear()
+
+  if (month > 11) {
+    month = 0
+    year++
+  }
+
+  const businessDays = countBusinessDaysOfMonth(year, month)
+
+  const days = daysWorked ?? businessDays
+
+  const amount = days * pluxeePerDay
+
+  return {
+    days,
+    businessDays,
+    amount
+  }
 
 }
 
-return repo.updatePeriod(id,{
-...input,
-pluxee_amount:pluxeeAmount
-})
+export async function create(input: any) {
+
+  const startDate = input.salary_pay_date
+
+  const endDate = addDays(startDate, 30)
+
+  await repo.closePreviousPeriod(addDays(startDate, -1))
+
+  const pluxeePerDay = input.pluxee_per_day ?? 5000
+
+  const pluxee = calculatePluxee(
+    startDate,
+    input.days_worked,
+    pluxeePerDay
+  )
+
+  return repo.createPeriod({
+
+    start_date: startDate,
+    end_date: endDate,
+    salary_pay_date: startDate,
+    base_salary_amount: input.base_salary_amount,
+
+    days_worked: pluxee.days,
+    pluxee_per_day: pluxeePerDay,
+    pluxee_amount: pluxee.amount,
+
+    notes: input.notes
+
+  })
 
 }
 
-export async function remove(id:string){
+export async function list() {
 
-return repo.deletePeriod(id)
+  return repo.listPeriods()
+
+}
+
+export async function current() {
+
+  return repo.getCurrentPeriod()
+
+}
+
+export async function update(id: string, input: any) {
+
+  const period = await repo.getPeriodById(id)
+
+  const pluxeePerDay = input.pluxee_per_day ?? period.pluxee_per_day ?? 5000
+
+  const daysWorked = input.days_worked ?? period.days_worked
+
+  const pluxee = calculatePluxee(
+    period.start_date,
+    daysWorked,
+    pluxeePerDay
+  )
+
+  return repo.updatePeriod(id, {
+
+    days_worked: pluxee.days,
+    pluxee_per_day: pluxeePerDay,
+    pluxee_amount: pluxee.amount,
+    notes: input.notes ?? period.notes
+
+  })
+
+}
+
+export async function remove(id: string) {
+
+  return repo.deletePeriod(id)
 
 }
