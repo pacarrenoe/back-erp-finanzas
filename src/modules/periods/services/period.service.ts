@@ -52,3 +52,26 @@ export async function current(){
 return repo.getCurrentPeriod()
 
 }
+
+export async function update(id:string,input:any){
+
+let pluxeeAmount = null
+
+if(input.days_worked && input.pluxee_per_day){
+
+pluxeeAmount = input.days_worked * input.pluxee_per_day
+
+}
+
+return repo.updatePeriod(id,{
+...input,
+pluxee_amount:pluxeeAmount
+})
+
+}
+
+export async function remove(id:string){
+
+return repo.deletePeriod(id)
+
+}

@@ -1,10 +1,14 @@
-import { pool } from "../../../database/db";
+import { pool } from "../../../database/db"
 
 export async function listPeriods() {
 
   const { rows } = await pool.query(
 
-    `SELECT * FROM period ORDER BY start_date DESC`
+    `
+SELECT *
+FROM period
+ORDER BY start_date DESC
+`
 
   )
 
@@ -35,7 +39,7 @@ export async function closePreviousPeriod(endDate: string) {
 
     `
 UPDATE period
-SET end_date = $1
+SET end_date=$1
 WHERE end_date IS NULL
 `,
     [endDate]
@@ -66,9 +70,48 @@ RETURNING *
       data.pluxee_amount ?? null,
       data.notes ?? null
     ]
-
   )
 
   return rows[0]
 
 }
+
+export async function updatePeriod(id: string, data: any) {
+
+  const { rows } = await pool.query(
+
+    `
+UPDATE period
+SET
+days_worked=$1,
+pluxee_per_day=$2,
+pluxee_amount=$3,
+notes=$4
+WHERE id=$5
+RETURNING *
+`,
+    [
+      data.days_worked ?? null,
+      data.pluxee_per_day ?? null,
+      data.pluxee_amount ?? null,
+      data.notes ?? null,
+      id
+    ]
+  )
+
+  return rows[0]
+
+}
+
+export async function deletePeriod(id: string) {
+
+  await pool.query(
+
+    `
+DELETE FROM period
+WHERE id=$1
+`,
+    [id]
+  )
+
+} 
