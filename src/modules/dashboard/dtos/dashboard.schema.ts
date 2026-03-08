@@ -5,5 +5,8 @@ export const trendQuerySchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? Number(v) : 6))
-    .refine((v) => Number.isFinite(v) && v >= 1 && v <= 24, "n inválido (1..24)"),
+    .refine(
+      (v) => Number.isFinite(v) && v >= 1 && v <= 24,
+      "n inválido (1..24)"
+    ),
 });
