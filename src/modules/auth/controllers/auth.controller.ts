@@ -15,6 +15,8 @@ export async function register(req: Request, res: Response) {
 
 export async function login(req: Request, res: Response) {
   try {
+
+     console.log("LOGIN BODY:", req.body); // ← agregar aquí
     const input = loginSchema.parse(req.body);
     const result = await service.login(input.email, input.password);
     return success(res, result);
