@@ -8,18 +8,36 @@ const idSchema = z.string().uuid();
 
 export async function list(req: Request, res: Response) {
   const q = listInstallmentsQuerySchema.parse(req.query);
-  const data = await service.list({ periodId: q.periodId, status: q.status });
+  const data = await service.list({
+    periodId: q.periodId,
+    status: q.status,
+  });
   return success(res, data);
 }
 
-export async function markPaid(req: Request, res: Response) {
+export async function listCurrent(req: Request, res: Response) {
+  const parsed = idSchema.safeParse(req.query.periodId);
+  if (!parsed.success) {
+    return failure(res, 412, "PRECONDITION FAILED", "periodId inválido (UUID requerido)");
+  }
+
+  const data = await service.listCurrent(parsed.data);
+  return success(res, data);
+}
+
+export async function markPaid(req: Request<{ id: string }>, res: Response) {
   const parsed = idSchema.safeParse(req.params.id);
   if (!parsed.success) {
     return failure(res, 412, "PRECONDITION FAILED", "UUID inválido");
   }
+
   const body = markPaidSchema.parse(req.body ?? {});
   const updated = await service.markPaid(parsed.data, body.paid_transaction_id);
-  if (!updated) return failure(res, 404, "NOT FOUND", "Cuota no encontrada");
+
+  if (!updated) {
+    return failure(res, 404, "NOT FOUND", "Cuota no encontrada");
+  }
+
   return success(res, updated, 200, "Cuota marcada como pagada");
 }
 
