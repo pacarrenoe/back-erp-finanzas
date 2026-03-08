@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const markPaidSchema = z.object({
-  paid_transaction_id: z.string().uuid().optional(), // si quieres linkear pago real
+  paid_transaction_id: z.string().uuid().optional(),
 });
 
 export const listInstallmentsQuerySchema = z.object({
